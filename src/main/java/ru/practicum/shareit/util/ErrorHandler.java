@@ -5,10 +5,7 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import ru.practicum.shareit.util.exceptions.NotFoundItemException;
-import ru.practicum.shareit.util.exceptions.NotFoundUserException;
-import ru.practicum.shareit.util.exceptions.NotValidParamException;
-import ru.practicum.shareit.util.exceptions.ValidateException;
+import ru.practicum.shareit.util.exceptions.*;
 
 @RestControllerAdvice
 public class ErrorHandler {
@@ -28,12 +25,17 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler
-    public ErrorResponse validationException(final ValidateException e) {
+    public ErrorResponse accessDeniedException(final AccessDeniedException e) {
+        return ErrorResponse.create(e, HttpStatus.FORBIDDEN, e.getReason());
+    }
+
+    @ExceptionHandler
+    public ErrorResponse dataAlreadyExistException(final DataAlreadyExistsException e) {
         return ErrorResponse.create(e, HttpStatus.CONFLICT, e.getReason());
     }
 
     @ExceptionHandler
     public ErrorResponse internalServerError(final Throwable e) {
-        return ErrorResponse.create(e, HttpStatus.INTERNAL_SERVER_ERROR, "произошла непредвиденная ошибка");
+        return ErrorResponse.create(e, HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
     }
 }

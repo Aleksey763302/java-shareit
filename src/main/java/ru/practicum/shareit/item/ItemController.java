@@ -1,6 +1,7 @@
 package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.user.UserService;
 import ru.practicum.shareit.util.Validation;
@@ -9,7 +10,6 @@ import ru.practicum.shareit.util.exceptions.NotValidParamException;
 import ru.practicum.shareit.item.dto.ItemDto;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @RestController
@@ -20,14 +20,15 @@ public class ItemController {
     private final UserService userService;
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public Optional<ItemDto> createItem(@RequestBody ItemDto item,
-                                        @RequestHeader("X-Sharer-User-Id") String userId) {
-        if (Objects.isNull(userId)) {
-            throw new NotValidParamException("Параметр X-Sharer-User-Id должен быть указан");
+                                        @RequestHeader(name = "X-Sharer-User-Id", defaultValue = "") String userId) {
+        if (userId.isBlank()) {
+            throw new NotValidParamException("The X-Sharer-User-Id parameter must be specified");
         }
         long ownerId = Validation.validUserId(userId);
         if (userService.getUserById(ownerId).isEmpty()) {
-            throw new NotFoundUserException("Пользователь не найден");
+            throw new NotFoundUserException("User not found");
         }
         Validation.validItem(item);
         return itemService.createItem(item, ownerId);
@@ -58,10 +59,8 @@ public class ItemController {
 
     @GetMapping("/search")
     public Optional<List<ItemDto>> searchItem(@RequestHeader("X-Sharer-User-Id") String userId,
-                                              @RequestParam String text) {
+                                              @RequestParam(required = false) String text) {
         Validation.validText(text);
         return itemService.searchItems(text);
     }
-
-
 }

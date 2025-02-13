@@ -1,6 +1,7 @@
 package ru.practicum.shareit.user;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.util.Validation;
 
@@ -13,8 +14,10 @@ public class UserController {
     private final UserService service;
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public Optional<User> createUser(@RequestBody User user) {
         Validation.validEmail(user.getEmail());
+        Validation.validName(user.getName());
         return service.createUser(user);
     }
 

@@ -6,6 +6,7 @@ import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.dto.ItemMapper;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.util.exceptions.NotFoundItemException;
+import ru.practicum.shareit.util.exceptions.AccessDeniedException;
 
 import java.util.List;
 import java.util.Objects;
@@ -33,12 +34,15 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public Optional<ItemDto> updateItem(ItemDto itemUpdate, Long userId, Long itemId) {
         Optional<Item> itemOptional = items.stream()
-                .filter(item -> item.getOwner().equals(userId) && item.getId().equals(itemId))
+                .filter(item -> item.getId().equals(itemId))
                 .findFirst();
         if (itemOptional.isEmpty()) {
-            throw new NotFoundItemException("Item не найден для обновления");
+            throw new NotFoundItemException("Item not found for update");
         }
         Item saveItem = itemOptional.get();
+        if (!saveItem.getOwner().equals(userId)) {
+            throw new AccessDeniedException("Editing is only available to the owner");
+        }
         items.remove(saveItem);
         if (Objects.nonNull(itemUpdate.getName())) {
             saveItem.setName(itemUpdate.getName());
@@ -83,7 +87,7 @@ public class ItemServiceImpl implements ItemService {
     public void deleteItemById(Long userId, Long itemId) {
         Optional<Item> itemOptional = getItemFromDb(userId, itemId);
         if (itemOptional.isEmpty()) {
-            throw new NotFoundItemException("Item не найден для удаления");
+            throw new NotFoundItemException("Item not found for deletion");
         }
         items.remove(itemOptional.get());
     }
