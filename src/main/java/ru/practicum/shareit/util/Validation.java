@@ -8,10 +8,16 @@ import java.util.Objects;
 public class Validation {
     public static void validEmail(String email) {
         if (Objects.isNull(email) || email.isBlank()) {
-            throw new NotValidParamException("Email должен быть указан");
+            throw new NotValidParamException("The email field must be specified");
         }
         if (!email.contains("@")) {
-            throw new NotValidParamException("Неправильный формат Email");
+            throw new NotValidParamException("Incorrect email format");
+        }
+    }
+
+    public static void validName(String name){
+        if (Objects.isNull(name) || name.isBlank()){
+            throw new NotValidParamException("The name field must be specified");
         }
     }
 
@@ -19,7 +25,7 @@ public class Validation {
         try {
             return Integer.toUnsignedLong(Integer.parseInt(id));
         } catch (NumberFormatException e) {
-            throw new NotValidParamException("Неправильный формат параметра userId");
+            throw new NotValidParamException("Incorrect format of userId parameter");
         }
     }
 
@@ -27,25 +33,25 @@ public class Validation {
         try {
             return Integer.toUnsignedLong(Integer.parseInt(id));
         } catch (NumberFormatException e) {
-            throw new NotValidParamException("Неправильный формат параметра itemId");
+            throw new NotValidParamException("Incorrect format of itemId parameter");
         }
     }
 
     public static void validItem(ItemDto item) {
         if (Objects.isNull(item.getAvailable())) {
-            throw new NotValidParamException("Available должен быть указан");
+            throw new NotValidParamException("The available field must be specified");
         }
         if (Objects.isNull(item.getName()) || item.getName().isBlank()) {
-            throw new NotValidParamException("Name должен быть указан");
+            throw new NotValidParamException("The name field must be specified");
         }
         if (Objects.isNull(item.getDescription()) || item.getDescription().isBlank()) {
-            throw new NotValidParamException("Description должен быть указан");
+            throw new NotValidParamException("The description field must be specified");
         }
     }
 
     public static void validText(String text) {
         if (Objects.isNull(text)) {
-            throw new NotValidParamException("Text должен быть указан");
+            throw new NotValidParamException("The text parameter must be specified");
         }
     }
 }

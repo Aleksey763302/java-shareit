@@ -2,8 +2,8 @@ package ru.practicum.shareit.user;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ru.practicum.shareit.util.exceptions.DataAlreadyExistsException;
 import ru.practicum.shareit.util.exceptions.NotFoundUserException;
-import ru.practicum.shareit.util.exceptions.ValidateException;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
     public Optional<User> updateUser(User user, Long userId) {
         Optional<User> optionalUser = getUserById(userId);
         if (optionalUser.isEmpty()) {
-            throw new NotFoundUserException("Пользователь не найден");
+            throw new NotFoundUserException("User not found");
         }
         User saveUser = optionalUser.get();
 
@@ -58,7 +58,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUserById(Long userId) {
         Optional<User> userOptional = getUserById(userId);
         if (userOptional.isEmpty()) {
-            throw new NotFoundUserException("Не найден пользователь для удаления");
+            throw new NotFoundUserException("No user found to delete");
         }
         users.remove(userOptional.get());
     }
@@ -68,7 +68,7 @@ public class UserServiceImpl implements UserService {
                 .toList().isEmpty()) {
             return true;
         } else {
-            throw new ValidateException("Email уже используется");
+            throw new DataAlreadyExistsException("Email already in use");
         }
     }
 }
