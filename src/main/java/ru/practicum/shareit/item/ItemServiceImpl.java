@@ -16,6 +16,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
     private final List<Item> items;
+    private final ItemMapper mapper;
     private Long maxId = 1L;
 
     @Override
@@ -28,7 +29,7 @@ public class ItemServiceImpl implements ItemService {
         newItem.setDescription(item.getDescription());
         newItem.setAvailable(item.getAvailable());
         items.add(newItem);
-        return Optional.of(ItemMapper.mapToItemDto(newItem));
+        return Optional.of(mapper.itemToItemDto(newItem));
     }
 
     @Override
@@ -54,21 +55,21 @@ public class ItemServiceImpl implements ItemService {
             saveItem.setAvailable(itemUpdate.getAvailable());
         }
         items.add(saveItem);
-        return Optional.of(ItemMapper.mapToItemDto(saveItem));
+        return Optional.of(mapper.itemToItemDto(saveItem));
     }
 
     @Override
     public Optional<ItemDto> getItemById(Long userId, Long itemId) {
         return items.stream()
                 .filter(item -> item.getOwner().equals(userId) && item.getId().equals(itemId))
-                .map(ItemMapper::mapToItemDto).findFirst();
+                .map(mapper::itemToItemDto).findFirst();
     }
 
     @Override
     public Optional<List<ItemDto>> getItemsByUserId(Long userId) {
         List<ItemDto> response = items.stream()
                 .filter(item -> item.getOwner().equals(userId))
-                .map(ItemMapper::mapToItemDto).toList();
+                .map(mapper::itemToItemDto).toList();
         return Optional.of(response);
     }
 
@@ -79,7 +80,7 @@ public class ItemServiceImpl implements ItemService {
         }
         List<ItemDto> response = items.stream()
                 .filter(item -> item.getName().toLowerCase().contains(text.toLowerCase()) && item.getAvailable())
-                .map(ItemMapper::mapToItemDto).toList();
+                .map(mapper::itemToItemDto).toList();
         return Optional.of(response);
     }
 

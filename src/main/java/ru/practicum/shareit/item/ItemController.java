@@ -18,13 +18,14 @@ import java.util.Optional;
 public class ItemController {
     private final ItemService itemService;
     private final UserService userService;
+    private static final String USER_ID_HEADER = "X-Sharer-User-Id";
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Optional<ItemDto> createItem(@RequestBody ItemDto item,
-                                        @RequestHeader(name = "X-Sharer-User-Id", defaultValue = "") String userId) {
+                                        @RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId) {
         if (userId.isBlank()) {
-            throw new NotValidParamException("The X-Sharer-User-Id parameter must be specified");
+            throw new NotValidParamException("The " + USER_ID_HEADER + " parameter must be specified");
         }
         long ownerId = Validation.validUserId(userId);
         if (userService.getUserById(ownerId).isEmpty()) {
@@ -36,7 +37,7 @@ public class ItemController {
 
     @PatchMapping("{itemId}")
     public Optional<ItemDto> updateItem(@RequestBody ItemDto itemUpdate,
-                                        @RequestHeader("X-Sharer-User-Id") String userId,
+                                        @RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId,
                                         @PathVariable String itemId) {
         long user = Validation.validUserId(userId);
         long item = Validation.validItemId(itemId);
@@ -44,7 +45,7 @@ public class ItemController {
     }
 
     @GetMapping("{itemId}")
-    public Optional<ItemDto> getItem(@RequestHeader("X-Sharer-User-Id") String userId,
+    public Optional<ItemDto> getItem(@RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId,
                                      @PathVariable String itemId) {
         long user = Validation.validUserId(userId);
         long item = Validation.validItemId(itemId);
@@ -52,13 +53,13 @@ public class ItemController {
     }
 
     @GetMapping
-    public Optional<List<ItemDto>> getItemsUser(@RequestHeader("X-Sharer-User-Id") String userId) {
+    public Optional<List<ItemDto>> getItemsUser(@RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId) {
         long user = Validation.validUserId(userId);
         return itemService.getItemsByUserId(user);
     }
 
     @GetMapping("/search")
-    public Optional<List<ItemDto>> searchItem(@RequestHeader("X-Sharer-User-Id") String userId,
+    public Optional<List<ItemDto>> searchItem(@RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId,
                                               @RequestParam(required = false) String text) {
         Validation.validText(text);
         return itemService.searchItems(text);
