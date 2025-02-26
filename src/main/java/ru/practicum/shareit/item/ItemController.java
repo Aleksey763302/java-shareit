@@ -1,13 +1,19 @@
 package ru.practicum.shareit.item;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.shareit.user.UserService;
-import ru.practicum.shareit.util.Validation;
-import ru.practicum.shareit.util.exceptions.NotFoundUserException;
-import ru.practicum.shareit.util.exceptions.NotValidParamException;
+import ru.practicum.shareit.item.dto.CommentDto;
+import ru.practicum.shareit.item.dto.ItemWithCommentDto;
+import ru.practicum.shareit.item.dto.RequestItemCreate;
+import ru.practicum.shareit.item.dto.RequestItemUpdate;
+import ru.practicum.shareit.item.dto.RequestCommentCreate;
 import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.service.CommentService;
+import ru.practicum.shareit.item.service.ItemService;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,53 +21,57 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/items")
 @RequiredArgsConstructor
+@Validated
+@Slf4j
 public class ItemController {
     private final ItemService itemService;
-    private final UserService userService;
+    private final CommentService commentService;
     private static final String USER_ID_HEADER = "X-Sharer-User-Id";
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Optional<ItemDto> createItem(@RequestBody ItemDto item,
-                                        @RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId) {
-        if (userId.isBlank()) {
-            throw new NotValidParamException("The " + USER_ID_HEADER + " parameter must be specified");
-        }
-        long ownerId = Validation.validUserId(userId);
-        if (userService.getUserById(ownerId).isEmpty()) {
-            throw new NotFoundUserException("User not found");
-        }
-        Validation.validItem(item);
-        return itemService.createItem(item, ownerId);
+    public Optional<ItemDto> createItem(@Valid @RequestBody RequestItemCreate request,
+                                        @RequestHeader(name = USER_ID_HEADER) Long userId) {
+        request.setOwner(userId);
+        return itemService.createItem(request);
     }
 
     @PatchMapping("{itemId}")
-    public Optional<ItemDto> updateItem(@RequestBody ItemDto itemUpdate,
-                                        @RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId,
-                                        @PathVariable String itemId) {
-        long user = Validation.validUserId(userId);
-        long item = Validation.validItemId(itemId);
-        return itemService.updateItem(itemUpdate, user, item);
+    @ResponseStatus(HttpStatus.OK)
+    public Optional<ItemDto> updateItem(@RequestBody RequestItemUpdate request,
+                                        @RequestHeader(name = USER_ID_HEADER) Long userId,
+                                        @PathVariable Long itemId) {
+        request.setItemId(itemId);
+        request.setOwnerId(userId);
+        return itemService.updateItem(request);
     }
 
     @GetMapping("{itemId}")
-    public Optional<ItemDto> getItem(@RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId,
-                                     @PathVariable String itemId) {
-        long user = Validation.validUserId(userId);
-        long item = Validation.validItemId(itemId);
-        return itemService.getItemById(user, item);
+    @ResponseStatus(HttpStatus.OK)
+    public Optional<ItemWithCommentDto> getItem(@RequestHeader(name = USER_ID_HEADER) Long userId,
+                                                           @PathVariable Long itemId) {
+        return itemService.getItemById(userId, itemId);
     }
 
     @GetMapping
-    public Optional<List<ItemDto>> getItemsUser(@RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId) {
-        long user = Validation.validUserId(userId);
-        return itemService.getItemsByUserId(user);
+    @ResponseStatus(HttpStatus.OK)
+    public Optional<List<ItemWithCommentDto>> getItemsUser(@RequestHeader(name = USER_ID_HEADER, defaultValue = "") Long userId) {
+        return itemService.getItemsByUserId(userId);
     }
 
     @GetMapping("/search")
-    public Optional<List<ItemDto>> searchItem(@RequestHeader(name = USER_ID_HEADER, defaultValue = "") String userId,
-                                              @RequestParam(required = false) String text) {
-        Validation.validText(text);
+    @ResponseStatus(HttpStatus.OK)
+    public Optional<List<ItemDto>> searchItem(@RequestHeader(name = USER_ID_HEADER) Long userId,
+                                              @RequestParam(defaultValue = "") String text) {
         return itemService.searchItems(text);
+    }
+    @PostMapping(path = "/{itemId}/comment")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Optional<CommentDto> createComment(@RequestBody RequestCommentCreate request,
+                                              @PathVariable Long itemId,
+                                              @RequestHeader(name = USER_ID_HEADER) Long userId){
+        request.setUserId(userId);
+        request.setItemId(itemId);
+        return commentService.createComment(request);
     }
 }

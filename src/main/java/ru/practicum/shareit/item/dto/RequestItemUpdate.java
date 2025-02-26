@@ -1,14 +1,11 @@
 package ru.practicum.shareit.item.dto;
 
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.stereotype.Component;
 
 @Data
-@Component
-@NoArgsConstructor
-public class ItemDto {
-    private Long id;
+public class RequestItemUpdate {
+    private Long itemId;
+    private Long ownerId;
     private String name;
     private String description;
     private Boolean available;
