@@ -41,7 +41,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                 .collect(Collectors.toMap(booking -> booking.getItem().getId(), Function.identity()));
     }
 
-    Booking findByBookerIdAndItemId(Long bookerId, Long ItemId);
+    Booking findByBookerIdAndItemId(Long bookerId, Long itemId);
 
     List<Booking> findByStatusInAndItemOwnerId(Set<Status> statuses, Long ownerId);
 

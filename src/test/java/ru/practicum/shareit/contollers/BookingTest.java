@@ -45,7 +45,7 @@ class BookingTest {
 
     @Test
     @DisplayName("POST /bookings. Корректное создание брони")
-    public void createBooking() throws Exception{
+    public void createBooking() throws Exception {
         mockMvc.perform(post("/bookings").contentType(MediaType.APPLICATION_JSON)
                 .header("X-Sharer-User-Id", 1)
                 .content(objectMapper.writeValueAsString(request))).andExpect(status().isCreated());

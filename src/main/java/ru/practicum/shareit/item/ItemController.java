@@ -49,7 +49,7 @@ public class ItemController {
     @GetMapping("{itemId}")
     @ResponseStatus(HttpStatus.OK)
     public Optional<ItemWithCommentDto> getItem(@RequestHeader(name = USER_ID_HEADER) Long userId,
-                                                           @PathVariable Long itemId) {
+                                                @PathVariable Long itemId) {
         return itemService.getItemById(userId, itemId);
     }
 
@@ -65,11 +65,12 @@ public class ItemController {
                                               @RequestParam(defaultValue = "") String text) {
         return itemService.searchItems(text);
     }
+
     @PostMapping(path = "/{itemId}/comment")
     @ResponseStatus(HttpStatus.CREATED)
     public Optional<CommentDto> createComment(@RequestBody RequestCommentCreate request,
                                               @PathVariable Long itemId,
-                                              @RequestHeader(name = USER_ID_HEADER) Long userId){
+                                              @RequestHeader(name = USER_ID_HEADER) Long userId) {
         request.setUserId(userId);
         request.setItemId(itemId);
         return commentService.createComment(request);
