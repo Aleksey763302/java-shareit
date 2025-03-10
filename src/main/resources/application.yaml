@@ -2,8 +2,8 @@
     datasource:
       driverClassName: "org.postgresql.Driver"
       url: "jdbc:postgresql://localhost:5432/sherit"
-      username: "as"
-      password: "1234"
+      username: "postgres"
+      password: "12345"
 
   jpa:
     hibernate.ddl-auto: none
