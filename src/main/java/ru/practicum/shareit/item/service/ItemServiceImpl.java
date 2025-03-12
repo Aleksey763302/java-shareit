@@ -87,10 +87,16 @@ public class ItemServiceImpl implements ItemService, CommentService {
         BookingDto nextBooking = null;
         if (itemOptional.isPresent()) {
             if (itemOptional.get().getOwner().getId().equals(userId)) {
-                lastBooking = bookingMapper.bookingToBookingDto(bookingRepository
-                        .findNextBooking(idList, current).stream().findFirst().orElseThrow());
-                nextBooking = bookingMapper.bookingToBookingDto(bookingRepository
-                        .findLostBooking(idList, current).stream().findFirst().orElseThrow());
+                Optional<Booking> lastBookingOpt = bookingRepository.findNextBooking(idList, current)
+                        .stream().findFirst();
+                Optional<Booking> nextBookingOpt = bookingRepository.findLostBooking(idList, current)
+                        .stream().findFirst();
+                if (lastBookingOpt.isPresent()) {
+                    lastBooking = bookingMapper.bookingToBookingDto(lastBookingOpt.get());
+                }
+                if (nextBookingOpt.isPresent()) {
+                    nextBooking = bookingMapper.bookingToBookingDto(nextBookingOpt.get());
+                }
             }
         } else {
             throw new NotFoundItemException("Предмет не найден");
