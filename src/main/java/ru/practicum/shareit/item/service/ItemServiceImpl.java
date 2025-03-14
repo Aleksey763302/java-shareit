@@ -197,7 +197,7 @@ public class ItemServiceImpl implements ItemService, CommentService {
                 .collect(Collectors.toMap(booking -> booking.getItem().getId(), Function.identity()));
     }
 
-    private Item findItemById(long itemId){
+    private Item findItemById(long itemId) {
         return itemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundItemException("Предмет не найден"));
     }

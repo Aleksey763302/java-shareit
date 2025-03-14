@@ -83,7 +83,7 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    private User findUserById(long userId){
+    private User findUserById(long userId) {
         return repository.findById(userId)
                 .orElseThrow(() -> new NotFoundUserException("Пользователь не найден"));
     }
