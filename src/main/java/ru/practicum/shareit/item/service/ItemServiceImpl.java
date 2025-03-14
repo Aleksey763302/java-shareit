@@ -10,11 +10,7 @@ import ru.practicum.shareit.booking.dto.BookingMapper;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.item.dto.*;
 
-import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.item.dto.RequestItemCreate;
-import ru.practicum.shareit.item.dto.RequestItemUpdate;
-import ru.practicum.shareit.item.model.Comment;
-import ru.practicum.shareit.item.dto.RequestCommentCreate;
+import ru.practicum.shareit.item.model.*;
 import ru.practicum.shareit.item.repository.CommentRepository;
 import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.user.repository.UserRepository;
@@ -27,6 +23,8 @@ import ru.practicum.shareit.util.exceptions.NotFoundUserException;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,76 +38,59 @@ public class ItemServiceImpl implements ItemService, CommentService {
 
     @Override
     @Transactional
-    public Optional<ItemDto> createItem(RequestItemCreate request) {
+    public ItemDto createItem(RequestItemCreate request, long ownerId) {
         Item item = new Item();
-        Optional<User> userOptional = userRepository.findById(request.getOwner());
-        if (userOptional.isEmpty()) {
-            throw new NotFoundUserException("User not found");
-        }
-        item.setOwner(userOptional.get());
+        User user = userRepository.findById(ownerId)
+                .orElseThrow(() -> new NotFoundUserException("Пользователь не найден"));
+        item.setOwner(user);
         item.setName(request.getName());
         item.setDescription(request.getDescription());
         item.setAvailable(request.getAvailable());
-        return Optional.of(itemMapper.itemToItemDto(itemRepository.save(item)));
+        return itemMapper.itemToItemDto(itemRepository.save(item));
     }
 
     @Override
     @Transactional
-    public Optional<ItemDto> updateItem(RequestItemUpdate request) {
-        Optional<Item> itemOptional = itemRepository.findById(request.getItemId());
-        if (itemOptional.isEmpty()) {
-            throw new NotFoundItemException("Не найден предмет для обновления");
-        }
-        Item saveItem = itemOptional.get();
-        if (!saveItem.getOwner().getId().equals(request.getOwnerId())) {
+    public ItemDto updateItem(RequestItemUpdate request, long itemId, long ownerId) {
+        Item item = findItemById(itemId);
+        if (!item.getOwner().getId().equals(ownerId)) {
             throw new AccessDeniedException("Доступность предмета для бронирования может быть изменена владельцем");
         }
         if (Objects.nonNull(request.getName())) {
-            saveItem.setName(request.getName());
+            item.setName(request.getName());
         }
         if (Objects.nonNull(request.getDescription())) {
-            saveItem.setDescription(request.getDescription());
+            item.setDescription(request.getDescription());
         }
         if (Objects.nonNull(request.getAvailable())) {
-            saveItem.setAvailable(request.getAvailable());
+            item.setAvailable(request.getAvailable());
         }
-        return Optional.of(itemMapper.itemToItemDto(itemRepository.save(saveItem)));
+        return itemMapper.itemToItemDto(itemRepository.save(item));
     }
 
     @Override
-    @Transactional
-    public Optional<ItemWithCommentDto> getItemById(Long userId, Long itemId) {
+    public Optional<ItemWithCommentDto> getItemById(long userId, long itemId) {
         Set<Long> idList = new HashSet<>();
         idList.add(itemId);
         LocalDateTime current = LocalDateTime.now();
-        Optional<Item> itemOptional = itemRepository.findById(itemId);
+        Item item = findItemById(itemId);
         BookingDto lastBooking = null;
         BookingDto nextBooking = null;
-        if (itemOptional.isPresent()) {
-            if (itemOptional.get().getOwner().getId().equals(userId)) {
-                Optional<Booking> lastBookingOpt = bookingRepository.findNextBooking(idList, current)
-                        .stream().findFirst();
-                Optional<Booking> nextBookingOpt = bookingRepository.findLostBooking(idList, current)
-                        .stream().findFirst();
-                if (lastBookingOpt.isPresent()) {
-                    lastBooking = bookingMapper.bookingToBookingDto(lastBookingOpt.get());
-                }
-                if (nextBookingOpt.isPresent()) {
-                    nextBooking = bookingMapper.bookingToBookingDto(nextBookingOpt.get());
-                }
-            }
-        } else {
-            throw new NotFoundItemException("Предмет не найден");
-        }
-        Item item = itemOptional.get();
 
-        Map<Long, List<Comment>> commentsMap = commentRepository.findCommentsGroupedByItem(idList);
+        if (item.getOwner().getId().equals(userId)) {
+            lastBooking = bookingRepository.findNextBooking(idList, current)
+                    .stream().findFirst().map(bookingMapper::toDto).orElse(null);
+            nextBooking = bookingRepository.findLostBooking(idList, current)
+                    .stream().findFirst().map(bookingMapper::toDto).orElse(null);
+        }
+
+        Map<Long, List<Comment>> comments = commentRepository.findCommentsGroupedByItem(idList);
 
         ItemWithCommentDto itemWithCommentDto = itemMapper.itemToItemCommentDto(item);
         itemWithCommentDto.setLastBooking(lastBooking);
         itemWithCommentDto.setNextBooking(nextBooking);
-        if (!commentsMap.isEmpty()) {
-            itemWithCommentDto.setComments(commentsMap.get(item.getId())
+        if (!comments.isEmpty()) {
+            itemWithCommentDto.setComments(comments.get(item.getId())
                     .stream()
                     .map(itemMapper::commentToCommentDto)
                     .toList());
@@ -120,8 +101,7 @@ public class ItemServiceImpl implements ItemService, CommentService {
     }
 
     @Override
-    @Transactional
-    public Optional<List<ItemWithCommentDto>> getItemsByUserId(Long userId) {
+    public List<ItemWithCommentDto> getItemsByUserId(long userId) {
         LocalDateTime current = LocalDateTime.now();
         Map<Long, Item> items = itemRepository.findItemsGroupedById(userId);
         if (items.isEmpty()) {
@@ -146,43 +126,35 @@ public class ItemServiceImpl implements ItemService, CommentService {
                 .toList();
 
         if (items.values().stream().allMatch(item -> item.getOwner().getId().equals(userId))) {
-            Map<Long, Booking> lastBookingMap = bookingRepository
-                    .findLostBookingGroupedByItem(items.keySet(), current);
-            Map<Long, Booking> nextBookingMap = bookingRepository
-                    .findNextBookingGroupedByItem(items.keySet(), current);
+            Map<Long, Booking> lastBookingMap = findLostBookingGroupedByItem(items.keySet(), current);
+            Map<Long, Booking> nextBookingMap = findNextBookingGroupedByItem(items.keySet(), current);
             response = response.stream()
                     .peek(itemComment -> {
                         itemComment.setLastBooking(bookingMapper
-                                .bookingToBookingDto(lastBookingMap.get(itemComment.getId())));
+                                .toDto(lastBookingMap.get(itemComment.getId())));
                         itemComment.setNextBooking(bookingMapper
-                                .bookingToBookingDto(nextBookingMap.get(itemComment.getId())));
+                                .toDto(nextBookingMap.get(itemComment.getId())));
                     })
                     .toList();
         }
 
-        return Optional.of(response);
+        return response;
     }
 
     @Override
-    @Transactional
-    public Optional<List<ItemDto>> searchItems(String text) {
+    public List<ItemDto> searchItems(String text) {
         if (text.isBlank()) {
-            return Optional.of(List.of());
+            return List.of();
         }
-        List<ItemDto> response = itemRepository.findByNameContainingIgnoreCase(text).stream()
+        return itemRepository.findByNameContainingIgnoreCase(text).stream()
                 .filter(Item::getAvailable)
                 .map(itemMapper::itemToItemDto).toList();
-        return Optional.of(response);
     }
 
     @Override
     @Transactional
-    public void deleteItemById(Long userId, Long itemId) {
-        Optional<Item> itemOptional = itemRepository.findById(userId);
-        if (itemOptional.isEmpty()) {
-            throw new NotFoundItemException("Предмет не найден для удаления");
-        }
-        Item item = itemOptional.get();
+    public void deleteItemById(long userId, long itemId) {
+        Item item = findItemById(itemId);
         if (!item.getOwner().getId().equals(userId)) {
             throw new AccessDeniedException("Удалить предмет может только владелец");
         }
@@ -191,9 +163,9 @@ public class ItemServiceImpl implements ItemService, CommentService {
 
     @Override
     @Transactional
-    public Optional<CommentDto> createComment(RequestCommentCreate request) {
+    public CommentDto createComment(RequestCommentCreate request, long userId, long itemId) {
         LocalDateTime time = LocalDateTime.now();
-        Booking booking = bookingRepository.findByBookerIdAndItemId(request.getUserId(), request.getItemId());
+        Booking booking = bookingRepository.findByBookerIdAndItemId(userId, itemId);
         if (Objects.isNull(booking)) {
             throw new AccessDeniedException("Коментарии могут оставлять только пользователи бронировавшие этот предмет");
         }
@@ -205,13 +177,28 @@ public class ItemServiceImpl implements ItemService, CommentService {
             comment.setUser(booking.getBooker());
             comment.setText(request.getText());
             comment.setCreated(time);
-            UserShort authorName = userRepository.findUserShortById(request.getUserId());
+            UserShort authorName = userRepository.findUserShortById(userId);
             comment = commentRepository.save(comment);
             CommentDto response = itemMapper.commentToCommentDto(comment);
             response.setAuthorName(authorName.getName());
-            return Optional.of(response);
+            return response;
         } else {
             throw new BookingApprovedException("Владелец не разрешил арендовать товар");
         }
+    }
+
+    private Map<Long, Booking> findNextBookingGroupedByItem(Set<Long> itemId, LocalDateTime current) {
+        return bookingRepository.findNextBooking(itemId, current).stream()
+                .collect(Collectors.toMap(booking -> booking.getItem().getId(), Function.identity()));
+    }
+
+    private Map<Long, Booking> findLostBookingGroupedByItem(Set<Long> itemId, LocalDateTime current) {
+        return bookingRepository.findLostBooking(itemId, current).stream()
+                .collect(Collectors.toMap(booking -> booking.getItem().getId(), Function.identity()));
+    }
+
+    private Item findItemById(long itemId){
+        return itemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundItemException("Предмет не найден"));
     }
 }

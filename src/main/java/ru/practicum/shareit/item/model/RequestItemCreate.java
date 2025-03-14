@@ -1,4 +1,4 @@
-package ru.practicum.shareit.item.dto;
+package ru.practicum.shareit.item.model;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -7,7 +7,6 @@ import lombok.Data;
 
 @Data
 public class RequestItemCreate {
-    private Long owner;
     @NotNull
     @NotBlank
     private String name;

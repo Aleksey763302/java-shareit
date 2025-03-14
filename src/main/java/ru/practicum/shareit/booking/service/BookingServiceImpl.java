@@ -3,13 +3,12 @@ package ru.practicum.shareit.booking.service;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ru.practicum.shareit.booking.dto.State;
+import ru.practicum.shareit.booking.model.State;
 import ru.practicum.shareit.booking.model.Status;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.dto.BookingMapper;
-import ru.practicum.shareit.booking.dto.ApproveBooking;
 import ru.practicum.shareit.booking.model.Booking;
-import ru.practicum.shareit.booking.dto.RequestBookingCreate;
+import ru.practicum.shareit.booking.model.RequestBookingCreate;
 import ru.practicum.shareit.booking.repository.BookingRepository;
 import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.item.model.Item;
@@ -33,12 +32,12 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Optional<BookingDto> createBooking(RequestBookingCreate request) {
+    public BookingDto createBooking(RequestBookingCreate request, long bookerId) {
         Booking booking = new Booking();
         booking.setStart(request.getStart());
         booking.setEnd(request.getEnd());
         booking.setStatus(Status.WAITING);
-        User user = userRepository.findById(request.getBookerId())
+        User user = userRepository.findById(bookerId)
                 .orElseThrow(() -> new NotFoundUserException("Пользователь не найден"));
 
         Item item = itemRepository.findById(request.getItemId())
@@ -49,76 +48,69 @@ public class BookingServiceImpl implements BookingService {
         booking.setBooker(user);
         booking.setItem(item);
         Booking response = bookingRepository.save(booking);
-        BookingDto bookingDto = mapper.bookingToBookingDto(response);
-        return Optional.of(bookingDto);
+        return mapper.toDto(response);
     }
 
     @Override
     @Transactional
-    public Optional<BookingDto> approveBooking(ApproveBooking approveBooking) {
-        Booking booking = bookingRepository.findById(approveBooking.getBookingId())
-                .orElseThrow(() -> new NotFoundBookingException("Бронь не найдена>"));
+    public BookingDto approveBooking(long bookingId, long userId, boolean approve) {
+        Booking booking = findBookingById(bookingId);
         Item item = booking.getItem();
-        if (!item.getOwner().getId().equals(approveBooking.getUserId())) {
+        if (!item.getOwner().getId().equals(userId)) {
             throw new AccessDeniedException("Только владелец может одобрить");
         }
         if (!item.getAvailable()) {
             throw new AccessDeniedException("Предмет не доступен для бронирования");
         }
-        if (approveBooking.getApprove()) {
+        if (approve) {
             booking.setStatus(Status.APPROVED);
             item.setAvailable(false);
             booking.setItem(item);
         } else {
             booking.setStatus(Status.REJECTED);
         }
-        BookingDto response = mapper.bookingToBookingDto(bookingRepository.save(booking));
-        return Optional.of(response);
+        return mapper.toDto(bookingRepository.save(booking));
     }
 
     @Override
-    @Transactional
-    public Optional<BookingDto> getBookingByBooker(Long bookingId, Long userId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new NotFoundBookingException("бронирование не найдено"));
+    public BookingDto getBookingByBooker(long bookingId, long userId) {
+        Booking booking = findBookingById(bookingId);
         if (!booking.getBooker().getId().equals(userId) && !booking.getItem().getOwner().getId().equals(userId)) {
             throw new AccessDeniedException("Доступно только владельцу или автору бронирования.");
         }
-        return Optional.of(mapper.bookingToBookingDto(booking));
+        return mapper.toDto(booking);
     }
 
     @Override
-    @Transactional
-    public List<BookingDto> getBookingsByOwner(State state, Long userId) {
+    public List<BookingDto> getBookingsByOwner(State state, long userId) {
         Set<Status> status = createStatusList(state);
         List<Booking> bookings = bookingRepository.findByStatusInAndItemOwnerId(status, userId);
         if (bookings.isEmpty()) {
             throw new NotFoundBookingException("бронирование не найдено");
         }
         return bookings
-                .stream().map(mapper::bookingToBookingDto)
+                .stream().map(mapper::toDto)
                 .toList();
     }
 
     @Override
-    @Transactional
-    public List<BookingDto> getBookingsByUserId(Long userId, State state) {
+    public List<BookingDto> getBookingsByUserId(long userId, State state) {
         Set<Status> status = createStatusList(state);
         LocalDateTime dateTime = LocalDateTime.now();
         List<Booking> response = new ArrayList<>();
         switch (state) {
             case ALL, REJECTED, WAITING -> response = bookingRepository.findByBookerIdAndStatusIn(userId, status);
             case FUTURE ->
-                    response = bookingRepository.findByBookerIdAndStatusInAndStartAfter(userId, status, dateTime);
+                    response = bookingRepository.findByBookerIdAndStatusInAndStartAfterOrderByStartAsc(userId, status, dateTime);
             case PAST -> response = bookingRepository.findByBookerIdAndStatusInAndStartBeforeAndEndBefore(
                     userId, status, dateTime, dateTime);
-            case CURRENT -> response = bookingRepository.findByBookerIdAndStatusInAndStartBeforeAndEndAfter(
-                    userId, status, dateTime, dateTime);
+            case CURRENT ->
+                    response = bookingRepository.findByBookerIdAndStatusInAndStartBeforeAndEndAfterOrderByStartAsc(
+                            userId, status, dateTime, dateTime);
         }
 
         return response.stream()
-                .sorted(Comparator.comparing(Booking::getStart))
-                .map(mapper::bookingToBookingDto)
+                .map(mapper::toDto)
                 .toList();
     }
 
@@ -143,5 +135,10 @@ public class BookingServiceImpl implements BookingService {
             status.add(Status.REJECTED);
         }
         return status;
+    }
+
+    private Booking findBookingById(long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NotFoundBookingException("бронирование не найдено"));
     }
 }

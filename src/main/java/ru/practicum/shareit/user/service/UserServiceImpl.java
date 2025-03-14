@@ -6,8 +6,8 @@ import org.springframework.stereotype.Service;
 import ru.practicum.shareit.booking.repository.BookingRepository;
 import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.dto.UserMapper;
-import ru.practicum.shareit.user.dto.RequestUserCreate;
-import ru.practicum.shareit.user.dto.RequestUserUpdate;
+import ru.practicum.shareit.user.model.RequestUserCreate;
+import ru.practicum.shareit.user.model.RequestUserUpdate;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.repository.UserRepository;
 import ru.practicum.shareit.util.exceptions.DataAlreadyExistsException;
@@ -26,24 +26,21 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public Optional<UserDto> createUser(RequestUserCreate request) {
+    public UserDto createUser(RequestUserCreate request) {
         String email = request.getEmail();
+        checkEmail(email);
         String name = request.getName();
         User user = new User();
-        if (checkEmail(email)) {
-            user.setName(name);
-            user.setEmail(email);
-            User userFromDB = repository.save(user);
-            UserDto userDto = mapper.userToUserDto(userFromDB);
-            return Optional.of(userDto);
-        }
-        return Optional.empty();
+        user.setName(name);
+        user.setEmail(email);
+        User userFromDB = repository.save(user);
+        return mapper.toDto(userFromDB);
     }
 
     @Override
     @Transactional
-    public Optional<UserDto> updateUser(RequestUserUpdate request) {
-        User saveUser = repository.findById(request.getId()).orElseThrow(() -> new NotFoundUserException("User not found"));
+    public UserDto updateUser(RequestUserUpdate request, long userId) {
+        User saveUser = findUserById(userId);
 
         if (Objects.nonNull(request.getName())) {
             saveUser.setName(request.getName());
@@ -53,26 +50,24 @@ public class UserServiceImpl implements UserService {
                 saveUser.setEmail(request.getEmail());
             }
         }
-        return Optional.of(mapper.userToUserDto(repository.save(saveUser)));
+        return mapper.toDto(repository.save(saveUser));
     }
 
     @Override
-    @Transactional
-    public Optional<UserDto> getUserById(Long userId) {
-        User user = repository.findById(userId).orElseThrow(() -> new NotFoundUserException("Пользователь не найден"));
-        return Optional.of(mapper.userToUserDto(user));
+    public Optional<UserDto> getUserById(long userId) {
+        User user = findUserById(userId);
+        return Optional.of(mapper.toDto(user));
     }
 
     @Override
-    @Transactional
     public List<UserDto> getAllUsers() {
         List<User> userList = repository.findAll();
-        return userList.stream().map(mapper::userToUserDto).toList();
+        return userList.stream().map(mapper::toDto).toList();
     }
 
     @Override
     @Transactional
-    public void deleteUserById(Long userId) {
+    public void deleteUserById(long userId) {
         if (repository.existsById(userId)) {
             repository.deleteById(userId);
         } else {
@@ -81,10 +76,15 @@ public class UserServiceImpl implements UserService {
     }
 
     private boolean checkEmail(String email) {
-        if (repository.findByEmailContainingIgnoreCase(email).isEmpty()) {
+        if (!repository.existsByEmail(email)) {
             return true;
         } else {
             throw new DataAlreadyExistsException("Email уже используется");
         }
+    }
+
+    private User findUserById(long userId){
+        return repository.findById(userId)
+                .orElseThrow(() -> new NotFoundUserException("Пользователь не найден"));
     }
 }

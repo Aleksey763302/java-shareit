@@ -6,8 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.user.dto.UserDto;
-import ru.practicum.shareit.user.dto.RequestUserCreate;
-import ru.practicum.shareit.user.dto.RequestUserUpdate;
+import ru.practicum.shareit.user.model.RequestUserCreate;
+import ru.practicum.shareit.user.model.RequestUserUpdate;
 import ru.practicum.shareit.user.service.UserService;
 
 import java.util.List;
@@ -22,15 +22,14 @@ public class UserController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Optional<UserDto> createUser(@Valid @RequestBody RequestUserCreate request) {
+    public UserDto createUser(@Valid @RequestBody RequestUserCreate request) {
         return service.createUser(request);
     }
 
     @PatchMapping("/{userId}")
     @ResponseStatus(HttpStatus.OK)
-    public Optional<UserDto> updateUser(@Valid @RequestBody RequestUserUpdate request, @PathVariable Long userId) {
-        request.setId(userId);
-        return service.updateUser(request);
+    public UserDto updateUser(@Valid @RequestBody RequestUserUpdate request, @PathVariable Long userId) {
+        return service.updateUser(request, userId);
     }
 
     @GetMapping("/{userId}")

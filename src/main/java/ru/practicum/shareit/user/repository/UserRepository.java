@@ -5,11 +5,9 @@ import org.springframework.stereotype.Repository;
 import ru.practicum.shareit.user.model.UserShort;
 import ru.practicum.shareit.user.model.User;
 
-import java.util.List;
-
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    List<User> findByEmailContainingIgnoreCase(String emailSearch);
+    boolean existsByEmail(String email);
 
     UserShort findUserShortById(Long id);
 }

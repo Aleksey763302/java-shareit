@@ -1,4 +1,4 @@
-package ru.practicum.shareit.booking.dto;
+package ru.practicum.shareit.booking.model;
 
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 public class RequestBookingCreate {
-    private Long bookerId;
     @NotNull
     private Long itemId;
     @NotNull

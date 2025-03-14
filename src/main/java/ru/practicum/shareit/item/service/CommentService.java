@@ -1,10 +1,8 @@
 package ru.practicum.shareit.item.service;
 
 import ru.practicum.shareit.item.dto.CommentDto;
-import ru.practicum.shareit.item.dto.RequestCommentCreate;
-
-import java.util.Optional;
+import ru.practicum.shareit.item.model.RequestCommentCreate;
 
 public interface CommentService {
-    Optional<CommentDto> createComment(RequestCommentCreate request);
+    CommentDto createComment(RequestCommentCreate body, long userId, long itemId);
 }

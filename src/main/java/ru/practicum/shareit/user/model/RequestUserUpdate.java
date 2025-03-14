@@ -1,4 +1,4 @@
-package ru.practicum.shareit.user.dto;
+package ru.practicum.shareit.user.model;
 
 import jakarta.validation.constraints.Email;
 import lombok.Data;
@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class RequestUserUpdate {
-    private Long id;
     private String name;
     @Email
     private String email;
