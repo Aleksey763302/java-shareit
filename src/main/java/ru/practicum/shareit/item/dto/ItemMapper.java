@@ -1,9 +1,12 @@
 package ru.practicum.shareit.item.dto;
 
-import org.mapstruct.Mapper;
 import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.item.model.Comment;
 
-@Mapper(componentModel = "spring")
 public interface ItemMapper {
     ItemDto itemToItemDto(Item item);
+
+    ItemWithCommentDto itemToItemCommentDto(Item item);
+
+    CommentDto commentToCommentDto(Comment comment);
 }

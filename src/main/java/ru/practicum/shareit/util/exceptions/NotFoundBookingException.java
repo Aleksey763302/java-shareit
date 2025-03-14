@@ -3,10 +3,10 @@ package ru.practicum.shareit.util.exceptions;
 import lombok.Getter;
 
 @Getter
-public class NotValidParamException extends RuntimeException {
+public class NotFoundBookingException extends RuntimeException {
     private final String reason;
 
-    public NotValidParamException(String reason) {
+    public NotFoundBookingException(String reason) {
         super();
         this.reason = reason;
     }
