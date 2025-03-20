@@ -2,6 +2,7 @@ package ru.practicum.shareit.item.service;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.booking.repository.BookingRepository;
 import ru.practicum.shareit.booking.model.Status;
@@ -13,19 +14,19 @@ import ru.practicum.shareit.item.dto.*;
 import ru.practicum.shareit.item.model.*;
 import ru.practicum.shareit.item.repository.CommentRepository;
 import ru.practicum.shareit.item.repository.ItemRepository;
+import ru.practicum.shareit.request.model.ItemRequest;
+import ru.practicum.shareit.request.repository.RequestRepository;
 import ru.practicum.shareit.user.repository.UserRepository;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.model.UserShort;
-import ru.practicum.shareit.util.exceptions.BookingApprovedException;
-import ru.practicum.shareit.util.exceptions.NotFoundItemException;
-import ru.practicum.shareit.util.exceptions.AccessDeniedException;
-import ru.practicum.shareit.util.exceptions.NotFoundUserException;
+import ru.practicum.shareit.util.exceptions.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService, CommentService {
@@ -33,6 +34,7 @@ public class ItemServiceImpl implements ItemService, CommentService {
     private final UserRepository userRepository;
     private final BookingRepository bookingRepository;
     private final CommentRepository commentRepository;
+    private final RequestRepository requestRepository;
     private final ItemMapper itemMapper;
     private final BookingMapper bookingMapper;
 
@@ -46,6 +48,14 @@ public class ItemServiceImpl implements ItemService, CommentService {
         item.setName(request.getName());
         item.setDescription(request.getDescription());
         item.setAvailable(request.getAvailable());
+        if (Objects.nonNull(request.getRequestId())) {
+            ItemRequest itemRequest = requestRepository.findById(request.getRequestId())
+                    .orElseThrow(() -> new NotFoundRequestException("Запрос не найден"));
+            List<Item> items = itemRequest.getItems();
+            items.add(item);
+            itemRequest.setItems(items);
+            item.setRequest(itemRequest);
+        }
         return itemMapper.itemToItemDto(itemRepository.save(item));
     }
 
@@ -84,7 +94,7 @@ public class ItemServiceImpl implements ItemService, CommentService {
                     .stream().findFirst().map(bookingMapper::toDto).orElse(null);
         }
 
-        Map<Long, List<Comment>> comments = commentRepository.findCommentsGroupedByItem(idList);
+        Map<Long, List<Comment>> comments = findCommentsGroupedByItem(idList);
 
         ItemWithCommentDto itemWithCommentDto = itemMapper.itemToItemCommentDto(item);
         itemWithCommentDto.setLastBooking(lastBooking);
@@ -103,12 +113,12 @@ public class ItemServiceImpl implements ItemService, CommentService {
     @Override
     public List<ItemWithCommentDto> getItemsByUserId(long userId) {
         LocalDateTime current = LocalDateTime.now();
-        Map<Long, Item> items = itemRepository.findItemsGroupedById(userId);
+        Map<Long, Item> items = findItemsGroupedById(userId);
         if (items.isEmpty()) {
             throw new NotFoundItemException("У пользователя нет предметов");
         }
 
-        Map<Long, List<Comment>> comments = commentRepository.findCommentsGroupedByItem(items.keySet());
+        Map<Long, List<Comment>> comments = findCommentsGroupedByItem(items.keySet());
 
         List<ItemWithCommentDto> response = items.values()
                 .stream()
@@ -195,6 +205,15 @@ public class ItemServiceImpl implements ItemService, CommentService {
     private Map<Long, Booking> findLostBookingGroupedByItem(Set<Long> itemId, LocalDateTime current) {
         return bookingRepository.findLostBooking(itemId, current).stream()
                 .collect(Collectors.toMap(booking -> booking.getItem().getId(), Function.identity()));
+    }
+
+    private Map<Long, List<Comment>> findCommentsGroupedByItem(Set<Long> userId) {
+        return commentRepository.findByItemIdIn(userId).stream()
+                .collect(Collectors.groupingBy(comment -> comment.getItem().getId()));
+    }
+
+    private Map<Long, Item> findItemsGroupedById(Long userId) {
+        return itemRepository.findByOwnerId(userId).stream().collect(Collectors.toMap(Item::getId, Function.identity()));
     }
 
     private Item findItemById(long itemId) {

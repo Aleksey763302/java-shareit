@@ -14,4 +14,5 @@ public class RequestItemCreate {
     private String description;
     @NotNull
     private Boolean available;
+    private Long requestId;
 }
