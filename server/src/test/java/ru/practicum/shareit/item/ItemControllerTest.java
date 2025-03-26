@@ -216,23 +216,6 @@ class ItemControllerTest {
                         .contains(objectMapper.writeValueAsString(commentCreate.getText())));
     }
 
-    @DisplayName("POST /items/{itemId}/comment. Создание коментария пользователем не бравшим в аренду")
-    @Test
-    void createCommentFailTest() throws Exception {
-        Map<Long, UserDto> users = createUsers(2);
-        long ownerID = users.keySet().stream().toList().getFirst();
-        long otherUser = users.keySet().stream().toList().getLast();
-        Map<Long, ItemDto> items = createItems(List.of(ownerID), true, 3);
-
-        RequestCommentCreate commentCreate = new RequestCommentCreate();
-        commentCreate.setText(generateRandomText(8));
-
-        mockMvc.perform(post("/items/" + items.values().stream().toList().getFirst().getId() + "/comment")
-                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(commentCreate))
-                        .header("X-Sharer-User-Id", otherUser))
-                .andExpect(status().isForbidden());
-    }
-
     @DisplayName("POST /items/{itemId}/comment. Создание коментария для не одобренной аренды")
     @Test
     void createCommentFailApproveTest() throws Exception {

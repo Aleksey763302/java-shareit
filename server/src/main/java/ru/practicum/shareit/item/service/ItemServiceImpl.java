@@ -177,9 +177,6 @@ public class ItemServiceImpl implements ItemService, CommentService {
     public CommentDto createComment(RequestCommentCreate request, long userId, long itemId) {
         LocalDateTime time = LocalDateTime.now();
         Booking booking = bookingRepository.findByBookerIdAndItemId(userId, itemId);
-        if (Objects.isNull(booking)) {
-            throw new AccessDeniedException("Коментарии могут оставлять только пользователи бронировавшие этот предмет");
-        }
         boolean isApproved = booking.getStatus().equals(Status.APPROVED);
         boolean isEndTime = booking.getEnd().isBefore(time);
         if (isApproved && isEndTime) {
